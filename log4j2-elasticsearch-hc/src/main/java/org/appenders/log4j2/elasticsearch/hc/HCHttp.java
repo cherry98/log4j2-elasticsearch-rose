@@ -33,6 +33,8 @@ import org.appenders.log4j2.elasticsearch.OperationFactory;
 import org.appenders.log4j2.elasticsearch.backoff.BackoffPolicy;
 import org.appenders.log4j2.elasticsearch.failover.FailedItemOps;
 import org.appenders.log4j2.elasticsearch.hc.failover.HCFailedItemOps;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,6 +46,7 @@ import static org.appenders.core.logging.InternalLogging.getLogger;
  * Creates {@link HttpClient} and batch handlers.
  */
 public class HCHttp extends BatchingClientObjectFactory<BatchRequest, IndexRequest> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HCHttp.class);
 
     protected final BatchOperations<BatchRequest> batchOperations;
     protected final OperationFactory operationFactory;
@@ -190,6 +193,7 @@ public class HCHttp extends BatchingClientObjectFactory<BatchRequest, IndexReque
 
         @Override
         public void failed(Exception ex) {
+            LOGGER.warn("log4j2 to es fail,request Uri {} ", request.getURI(), ex);
 
             getLogger().warn(ex.getMessage(), ex);
 

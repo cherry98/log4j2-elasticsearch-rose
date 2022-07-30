@@ -27,6 +27,7 @@ import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.LayeredConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
@@ -46,7 +47,16 @@ import org.appenders.log4j2.elasticsearch.Auth;
 import org.appenders.log4j2.elasticsearch.GenericItemSourcePool;
 import org.appenders.log4j2.elasticsearch.UnlimitedResizePolicy;
 import org.appenders.log4j2.elasticsearch.hc.discovery.ServiceDiscovery;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -54,6 +64,7 @@ import java.util.Collection;
  * Factory for Apache HC Client specific objects
  */
 public class HttpClientFactory {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HttpClientFactory.class);
 
     protected final Collection<String> serverList;
     protected final int connTimeout;
@@ -217,8 +228,8 @@ public class HttpClientFactory {
     public static class Builder {
 
         protected Collection<String> serverList = new ArrayList<>();
-        protected int connTimeout = 1000;
-        protected int readTimeout = 1000;
+        protected int connTimeout = 2000;
+        protected int readTimeout = 2000;
         protected int maxTotalConnections = 1;
         protected int ioThreadCount = maxTotalConnections;
         protected CredentialsProvider defaultCredentialsProvider;
@@ -256,7 +267,10 @@ public class HttpClientFactory {
                 this.httpIOSessionStrategy = NoopIOSessionStrategy.INSTANCE;
             }
             if (this.httpsIOSessionStrategy == null) {
-                this.httpsIOSessionStrategy = SSLIOSessionStrategy.getSystemDefaultStrategy();
+                if (this.httpsIOSessionStrategy == null) {
+                    this.httpsIOSessionStrategy = customSessionStrategy();
+                    LOGGER.info("customSessionStrategy builder done");
+                }
             }
 
             return this;
@@ -348,6 +362,35 @@ public class HttpClientFactory {
                     '}';
         }
 
-    }
+        private SSLIOSessionStrategy customSessionStrategy() {
+            try {
+                return new SSLIOSessionStrategy(getSslContext(), NoopHostnameVerifier.INSTANCE);
+            } catch (Throwable e) {
+                LOGGER.warn("create SSL fail ", e);
+                return SSLIOSessionStrategy.getSystemDefaultStrategy();
+            }
+        }
 
+        private static SSLContext getSslContext() throws NoSuchAlgorithmException, KeyManagementException {
+            SSLContext ctx = SSLContext.getInstance("SSL");
+            X509TrustManager manager = new X509TrustManager() {
+                @Override
+                public void checkClientTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+
+                }
+
+                @Override
+                public void checkServerTrusted(X509Certificate[] x509Certificates, String s) throws CertificateException {
+
+                }
+
+                @Override
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
+            };
+            ctx.init(null, new TrustManager[]{manager}, null);
+            return ctx;
+        }
+    }
 }
