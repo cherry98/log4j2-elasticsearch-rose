@@ -41,10 +41,13 @@ import org.apache.logging.log4j.core.time.Instant;
 import org.apache.logging.log4j.message.Message;
 import org.apache.logging.log4j.util.ReadOnlyStringMap;
 import org.appenders.log4j2.elasticsearch.json.jackson.JacksonJsonStringMessageSerializer;
+import org.appenders.log4j2.elasticsearch.json.jackson.JacksonJsonStringThrowableSerializer;
+import org.appenders.log4j2.elasticsearch.util.IpUtil;
 
 import java.util.Map;
 
-@JsonPropertyOrder({ "timeMillis", "loggerName", "level", "marker", "message", "thrown", "threadName"})
+@JsonPropertyOrder({"timeMillis", "loggerName", "level", "marker", "message", "thrown", "threadName"
+        , "hostName", "ip"})
 @JsonSerialize(as = LogEvent.class)
 public abstract class LogEventJacksonJsonMixIn implements LogEvent {
 
@@ -74,7 +77,7 @@ public abstract class LogEventJacksonJsonMixIn implements LogEvent {
     @Override
     public abstract String getLoggerName();
 
-    @JsonProperty(JsonConstants.ELT_MARKER)
+    @JsonIgnore
     @Override
     public abstract Marker getMarker();
 
@@ -104,6 +107,7 @@ public abstract class LogEventJacksonJsonMixIn implements LogEvent {
     public abstract Throwable getThrown();
 
     @JsonProperty(JsonConstants.ELT_THROWN)
+    @JsonSerialize(using = JacksonJsonStringThrowableSerializer.class)
     @Override
     public abstract ThrowableProxy getThrownProxy();
 
@@ -136,5 +140,14 @@ public abstract class LogEventJacksonJsonMixIn implements LogEvent {
     @JsonIgnore
     public abstract short getParameterCount();
 
+    @JsonProperty
+    public String getHostName() {
+        return IpUtil.getHostSubName();
+    }
+
+    @JsonProperty
+    public String getIp() {
+        return IpUtil.getLocalIp();
+    }
 }
 

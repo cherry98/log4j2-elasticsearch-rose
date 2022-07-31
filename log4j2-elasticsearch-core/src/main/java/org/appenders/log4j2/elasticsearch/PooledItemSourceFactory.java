@@ -9,9 +9,9 @@ package org.appenders.log4j2.elasticsearch;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,10 +20,20 @@ package org.appenders.log4j2.elasticsearch;
  * #L%
  */
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import io.netty.util.internal.ThrowableUtil;
+import net.openhft.chronicle.core.onoes.LogLevel;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.impl.Log4jLogEvent;
+import org.appenders.log4j2.elasticsearch.util.IpUtil;
+import org.slf4j.MDC;
 
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.appenders.core.logging.InternalLogging.getLogger;
 
@@ -48,10 +58,10 @@ public class PooledItemSourceFactory<T, R> implements ItemSourceFactory<T, R> {
 
 
     /**
-     * @param itemSourcePool pool of reusable buffers
+     * @param itemSourcePool       pool of reusable buffers
      * @param outputStreamProvider pooled item to {@code java.io.OutputStream} wrapper factory
-     * @param nullOnEmptyPool If <i>false</i>, exception will be thrown if {@link #create(Object, ObjectWriter)} can't obtain pooled element via {@link ItemSourcePool#getPooled()}.
-     *                     Otherwise {@link ItemSourcePool#getPooledOrNull()} will be used instead and <i>null</i> returned if pool is empty after resize attempt.
+     * @param nullOnEmptyPool      If <i>false</i>, exception will be thrown if {@link #create(Object, ObjectWriter)} can't obtain pooled element via {@link ItemSourcePool#getPooled()}.
+     *                             Otherwise {@link ItemSourcePool#getPooledOrNull()} will be used instead and <i>null</i> returned if pool is empty after resize attempt.
      */
     protected PooledItemSourceFactory(final ItemSourcePool<R> itemSourcePool, final OutputStreamProvider<R> outputStreamProvider, final boolean nullOnEmptyPool) {
         this.bufferedItemSourcePool = itemSourcePool;
@@ -70,11 +80,11 @@ public class PooledItemSourceFactory<T, R> implements ItemSourceFactory<T, R> {
     /**
      * Serializes given object to {@link ByteBufItemSource} using given {@link ObjectWriter}
      *
-     * @param source item to serialize
+     * @param source       item to serialize
      * @param objectWriter writer to be used to serialize given item
-     * @throws IllegalStateException if underlying pool cannot provide {@link ByteBufItemSource}
-     * @throws IllegalArgumentException if serialization failed
      * @return {@link ByteBufItemSource} with serialized event
+     * @throws IllegalStateException    if underlying pool cannot provide {@link ByteBufItemSource}
+     * @throws IllegalArgumentException if serialization failed
      * @deprecated As of 1.7, this method will be removed. Use {@link #create(Object, Serializer)} instead.
      */
     @Override
@@ -87,12 +97,37 @@ public class PooledItemSourceFactory<T, R> implements ItemSourceFactory<T, R> {
         }
 
         try {
-            objectWriter.writeValue(outputStreamProvider.asOutputStream(pooled), source);
+            if (source instanceof Log4jLogEvent) {
+                LogEvent logEvent = (Log4jLogEvent) source;
+                LogEventIndexDocument doc = new LogEventIndexDocument();
+                doc.setLevel(logEvent.getLevel());
+                doc.setLoggerFqcn(logEvent.getLoggerFqcn());
+                doc.setMessage(logEvent.getMessage());
+                doc.setThreadId(logEvent.getThreadId());
+                Optional.ofNullable(logEvent.getThrown())
+                        .ifPresent(e -> doc.setThrown(ThrowableUtil.stackTraceToString(e)));
+                doc.setThreadName(logEvent.getThreadName());
+                doc.setLoggerName(logEvent.getLoggerName());
+                doc.setNanoTime(logEvent.getNanoTime());
+                doc.setHostName(IpUtil.getHostname());
+                doc.setIp(IpUtil.getLocalIp());
+                doc.setRequestId(MDC.get("requestId"));
+                objectWriter.writeValue(outputStreamProvider.asOutputStream(pooled), doc);
+            } else {
+                objectWriter.writeValue(outputStreamProvider.asOutputStream(pooled), source);
+            }
             return pooled;
         } catch (IOException e) {
             pooled.release();
             throw new IllegalArgumentException(e);
         }
+    }
+
+    private ItemSource<R> create2(Object source) {
+        return create(source, new ObjectMapper()
+                .setSerializationInclusion(JsonInclude.Include.NON_EMPTY)
+                .configure(SerializationFeature.CLOSE_CLOSEABLE, false)
+                .writer());
     }
 
     @Override
@@ -105,7 +140,11 @@ public class PooledItemSourceFactory<T, R> implements ItemSourceFactory<T, R> {
         }
 
         try {
+            if (source instanceof Log4jLogEvent) {
+               // return create2(source);
+            }
             serializer.write(outputStreamProvider.asOutputStream(pooled), source);
+
             return pooled;
         } catch (Exception e) {
             pooled.release();
@@ -202,6 +241,7 @@ public class PooledItemSourceFactory<T, R> implements ItemSourceFactory<T, R> {
 
         /**
          * Creates default {@link ResizePolicy} if one was not configured
+         *
          * @return {@link UnlimitedResizePolicy}
          */
         ResizePolicy createResizePolicy() {
@@ -348,7 +388,7 @@ public class PooledItemSourceFactory<T, R> implements ItemSourceFactory<T, R> {
 
         /**
          * @param nullOnEmptyPool If <i>false</i> (default), exception will be thrown if {@link #create(Object, ObjectWriter)} can't obtain pooled element via {@link ItemSourcePool#getPooled()}.
-         *                     Otherwise {@link ItemSourcePool#getPooledOrNull()} will be used instead and <i>null</i> returned if pool is empty after resize attempt.
+         *                        Otherwise {@link ItemSourcePool#getPooledOrNull()} will be used instead and <i>null</i> returned if pool is empty after resize attempt.
          * @return this
          */
         public Builder<T, R> withNullOnEmptyPool(boolean nullOnEmptyPool) {

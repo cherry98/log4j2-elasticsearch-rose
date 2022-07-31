@@ -9,9 +9,9 @@ package org.appenders.log4j2.elasticsearch;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.introspect.AnnotationCollector;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 import com.fasterxml.jackson.databind.ser.VirtualBeanPropertyWriter;
 import com.fasterxml.jackson.databind.util.Annotations;
+import org.appenders.log4j2.elasticsearch.util.IpUtil;
 
 /**
  * This custom FasterXML Jackson {@code com.fasterxml.jackson.databind.ser.VirtualBeanPropertyWriter}
@@ -56,7 +57,7 @@ public class VirtualPropertiesWriter extends VirtualBeanPropertyWriter {
      * Initializes writer with no filters
      *
      * @param virtualProperties {@link VirtualProperty}-ies to append
-     * @param valueResolver {@link ValueResolver} dynamic variables resolver
+     * @param valueResolver     {@link ValueResolver} dynamic variables resolver
      */
     public VirtualPropertiesWriter(VirtualProperty[] virtualProperties, ValueResolver valueResolver) {
         this(virtualProperties, valueResolver, new VirtualPropertyFilter[0]);
@@ -64,9 +65,9 @@ public class VirtualPropertiesWriter extends VirtualBeanPropertyWriter {
 
     /**
      * @param virtualProperties {@link VirtualProperty}-ies to append
-     * @param valueResolver {@link ValueResolver} dynamic variables resolver
-     * @param filters {@link VirtualPropertyFilter} inclusion filters. Allow to include/exclude
-     * {@link VirtualProperty} by name or value returned by {@link ValueResolver}
+     * @param valueResolver     {@link ValueResolver} dynamic variables resolver
+     * @param filters           {@link VirtualPropertyFilter} inclusion filters. Allow to include/exclude
+     *                          {@link VirtualProperty} by name or value returned by {@link ValueResolver}
      */
     public VirtualPropertiesWriter(VirtualProperty[] virtualProperties, ValueResolver valueResolver, VirtualPropertyFilter[] filters) {
         this.virtualProperties = virtualProperties;
@@ -78,13 +79,13 @@ public class VirtualPropertiesWriter extends VirtualBeanPropertyWriter {
      * This constructor should not be invoked directly and should only be used within
      * {@link #withConfig(MapperConfig, AnnotatedClass, BeanPropertyDefinition, JavaType)} call.
      *
-     * @param propDef property definition created by {@code by com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector}
-     * @param annotations contains only @JsonAppend at the moment
-     * @param type {@link VirtualProperty}[]
+     * @param propDef           property definition created by {@code by com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector}
+     * @param annotations       contains only @JsonAppend at the moment
+     * @param type              {@link VirtualProperty}[]
      * @param virtualProperties {@link VirtualProperty}-ies to append
-     * @param valueResolver {@link ValueResolver} dynamic variables resolver
-     * @param filters {@link VirtualPropertyFilter} inclusion filters. Allow to include/exclude
-     * {@link VirtualProperty} by name or value returned by {@link ValueResolver}
+     * @param valueResolver     {@link ValueResolver} dynamic variables resolver
+     * @param filters           {@link VirtualPropertyFilter} inclusion filters. Allow to include/exclude
+     *                          {@link VirtualProperty} by name or value returned by {@link ValueResolver}
      */
     VirtualPropertiesWriter(
             BeanPropertyDefinition propDef,
@@ -121,6 +122,13 @@ public class VirtualPropertiesWriter extends VirtualBeanPropertyWriter {
             gen.writeString(resolved);
 
         }
+        //append ip and hostName
+        gen.writeFieldName("ip");
+        gen.writeString(IpUtil.getLocalIp());
+
+        gen.writeFieldName("hostName");
+        gen.writeString(IpUtil.getHostSubName());
+
     }
 
     private boolean isExcluded(VirtualProperty property, String resolved) {

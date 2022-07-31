@@ -46,11 +46,12 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.appenders.log4j2.elasticsearch.VirtualPropertiesWriter;
 import org.appenders.log4j2.elasticsearch.VirtualProperty;
 import org.appenders.log4j2.elasticsearch.json.jackson.ExtendedLogEventJacksonJsonMixIn;
+import org.appenders.log4j2.elasticsearch.util.IpUtil;
 
 /**
  * @deprecated As of 2.0, this class will be removed. Use {@link ExtendedLogEventJacksonJsonMixIn} instead
  */
-@JsonPropertyOrder({ "timeMillis", "loggerName", "level", "marker", "message", "thrown", "threadName"})
+@JsonPropertyOrder({ "timeMillis", "loggerName", "level", "marker", "message", "thrown", "threadName","hostName","ip"})
 @JsonSerialize(as = LogEvent.class)
 @JsonAppend(props = {
         @JsonAppend.Prop(
@@ -150,5 +151,14 @@ public abstract class LogEventJacksonJsonMixIn implements LogEvent {
     @JsonIgnore
     public abstract short getParameterCount();
 
+    @JsonProperty
+    public String getHostName() {
+        return IpUtil.getHostSubName();
+    }
+
+    @JsonProperty
+    public String getIp() {
+        return IpUtil.getLocalIp();
+    }
 }
 

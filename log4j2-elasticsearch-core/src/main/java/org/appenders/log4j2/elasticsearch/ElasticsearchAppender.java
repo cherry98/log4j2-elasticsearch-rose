@@ -9,9 +9,9 @@ package org.appenders.log4j2.elasticsearch;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -60,7 +60,7 @@ public class ElasticsearchAppender extends AbstractAppender {
     private final ItemAppender itemAppender;
 
     protected ElasticsearchAppender(String name, Filter filter, Layout layout,
-            boolean ignoreExceptions, BatchDelivery batchDelivery, boolean messageOnly, IndexNameFormatter indexNameFormatter) {
+                                    boolean ignoreExceptions, BatchDelivery batchDelivery, boolean messageOnly, IndexNameFormatter indexNameFormatter) {
         super(name, filter, layout, ignoreExceptions, Property.EMPTY_ARRAY);
         this.indexNameFormatter = indexNameFormatter;
         this.itemAppender = createItemAppenderFactory().createInstance(messageOnly, layout, batchDelivery);
@@ -81,7 +81,7 @@ public class ElasticsearchAppender extends AbstractAppender {
         return new Builder();
     }
 
-    public static class Builder implements org.apache.logging.log4j.core.util.Builder<ElasticsearchAppender>  {
+    public static class Builder implements org.apache.logging.log4j.core.util.Builder<ElasticsearchAppender> {
 
         /**
          * Default: {@link IndexNamePlugin}
@@ -227,7 +227,7 @@ public class ElasticsearchAppender extends AbstractAppender {
         itemAppender.start();
 
         if (getLayout() instanceof LifeCycle) {
-            ((LifeCycle)getLayout()).start();
+            ((LifeCycle) getLayout()).start();
         }
 
     }
@@ -239,8 +239,8 @@ public class ElasticsearchAppender extends AbstractAppender {
         }
 
         if (getLayout() instanceof LifeCycle
-                && !((LifeCycle)getLayout()).isStopped()) {
-            ((LifeCycle)getLayout()).stop();
+                && !((LifeCycle) getLayout()).isStopped()) {
+            ((LifeCycle) getLayout()).stop();
         }
 
         setLogger(null);
