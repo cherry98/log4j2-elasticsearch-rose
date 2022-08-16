@@ -38,6 +38,7 @@ public class BasicCredentialsTest {
     private static final String TEST_PASSWORD = "changeme";
 
     public static BasicCredentials.Builder createTestBuilder() {
+
         return BasicCredentials.newBuilder()
                 .withUsername(TEST_USER)
                 .withPassword(TEST_PASSWORD);
